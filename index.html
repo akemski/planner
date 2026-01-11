@@ -1262,12 +1262,20 @@
             const saved = localStorage.getItem('lifePlannerData');
             if (saved) {
                 data = JSON.parse(saved);
-                // Initialize new fields if they don't exist
-                if (!data.appointments) data.appointments = [];
-                if (!data.goals) data.goals = [];
-                if (!data.likes) data.likes = [];
-                if (!data.dislikes) data.dislikes = [];
             }
+            // ALWAYS initialize new fields if they don't exist
+            if (!data.appointments) data.appointments = [];
+            if (!data.goals) data.goals = [];
+            if (!data.likes) data.likes = [];
+            if (!data.dislikes) data.dislikes = [];
+            if (!data.dailyTasks) data.dailyTasks = [];
+            if (!data.shoppingList) data.shoppingList = [];
+            if (!data.notes) data.notes = [];
+            if (!data.reminders) data.reminders = [];
+            if (!data.workouts) data.workouts = [];
+            if (!data.recipes) data.recipes = [];
+            if (!data.mealPlans) data.mealPlans = {};
+            if (!data.progress) data.progress = {};
             checkAndResetDailyTasks();
         }
         
