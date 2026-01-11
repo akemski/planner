@@ -446,18 +446,6 @@
             position: relative;
         }
         
-        .task-item::before {
-            content: '✓';
-            position: absolute;
-            left: -8px;
-            top: 50%;
-            transform: translateY(-50%);
-            font-size: 18px;
-            color: var(--accent-green);
-            opacity: 0;
-            transition: all 0.3s ease;
-        }
-        
         .task-item:hover,
         .reminder-item:hover,
         .list-item:hover,
@@ -466,11 +454,6 @@
             background: white;
             transform: translateX(5px);
             box-shadow: 0 4px 15px var(--shadow-light);
-        }
-        
-        .task-item:hover::before {
-            opacity: 1;
-            left: -3px;
         }
         
         .task-item.completed {
@@ -1160,14 +1143,13 @@
 
     <script>
         // ==================== FIREBASE CONFIG ====================
-        // !!! HIER DEINE FIREBASE CONFIG EINFÜGEN !!!
         const firebaseConfig = {
             apiKey: "AIzaSyDOS7U6Se0jYh_4PgQqWlDeBZ65FgA3Mr0",
-            authDomain: "life-planner000.firebaseapp.com",
-            projectId: "life-planner000",
-            storageBucket: "life-planner000.firebasestorage.app",
-            messagingSenderId: "999040701780",
-            appId: "1:999040701780:web:cb8ee487e25eb0e31324c1"
+  authDomain: "life-planner000.firebaseapp.com",
+  projectId: "life-planner000",
+  storageBucket: "life-planner000.firebasestorage.app",
+  messagingSenderId: "999040701780",
+  appId: "1:999040701780:web:cb8ee487e25eb0e31324c1"
         };
         
         let firebaseApp, auth, db, currentUser = null, unsubscribeSnapshot = null;
@@ -1498,9 +1480,12 @@
             const time = document.getElementById('appointmentTime').value;
             const notes = document.getElementById('appointmentNotes').value.trim();
             
-            if (!title || !date) return;
+            if (!title || !date) {
+                alert('Bitte Titel und Datum eingeben!');
+                return;
+            }
             
-            data.appointments.push({ id: Date.now(), title, date, time, notes });
+            data.appointments.push({ id: Date.now(), title, date, time: time || '', notes });
             document.getElementById('appointmentTitle').value = '';
             document.getElementById('appointmentDate').value = '';
             document.getElementById('appointmentTime').value = '';
@@ -1542,7 +1527,10 @@
         function addGoal() {
             const title = document.getElementById('goalTitle').value.trim();
             const deadline = document.getElementById('goalDeadline').value;
-            if (!title || !deadline) return;
+            if (!title || !deadline) {
+                alert('Bitte Titel und Deadline eingeben!');
+                return;
+            }
             
             data.goals.push({ id: Date.now(), title, deadline, completed: false });
             document.getElementById('goalTitle').value = '';
@@ -1875,7 +1863,10 @@
             const name = document.getElementById('likeDislikeName').value.trim();
             const notes = document.getElementById('likeDislikeNotes').value.trim();
             
-            if (!name) return;
+            if (!name) {
+                alert('Bitte Name eingeben!');
+                return;
+            }
             
             const entry = { id: Date.now(), category, name, notes };
             
