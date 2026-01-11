@@ -1206,7 +1206,19 @@
                 if (doc.exists) {
                     const cloudData = doc.data().data;
                     if (cloudData) {
-                        data = cloudData;
+                        // Merge instead of overwriting
+                        data.dailyTasks = cloudData.dailyTasks || [];
+                        data.appointments = cloudData.appointments || [];
+                        data.goals = cloudData.goals || [];
+                        data.shoppingList = cloudData.shoppingList || [];
+                        data.notes = cloudData.notes || [];
+                        data.reminders = cloudData.reminders || [];
+                        data.workouts = cloudData.workouts || [];
+                        data.recipes = cloudData.recipes || [];
+                        data.mealPlans = cloudData.mealPlans || {};
+                        data.likes = cloudData.likes || [];
+                        data.dislikes = cloudData.dislikes || [];
+                        data.progress = cloudData.progress || {};
                         saveDataLocally();
                         refreshAllViews();
                     }
@@ -1215,7 +1227,20 @@
                 if (unsubscribeSnapshot) unsubscribeSnapshot();
                 unsubscribeSnapshot = db.collection('users').doc(currentUser.uid).onSnapshot((doc) => {
                     if (doc.exists && doc.data().data) {
-                        data = doc.data().data;
+                        const cloudData = doc.data().data;
+                        // Merge instead of overwriting
+                        data.dailyTasks = cloudData.dailyTasks || [];
+                        data.appointments = cloudData.appointments || [];
+                        data.goals = cloudData.goals || [];
+                        data.shoppingList = cloudData.shoppingList || [];
+                        data.notes = cloudData.notes || [];
+                        data.reminders = cloudData.reminders || [];
+                        data.workouts = cloudData.workouts || [];
+                        data.recipes = cloudData.recipes || [];
+                        data.mealPlans = cloudData.mealPlans || {};
+                        data.likes = cloudData.likes || [];
+                        data.dislikes = cloudData.dislikes || [];
+                        data.progress = cloudData.progress || {};
                         saveDataLocally();
                         refreshAllViews();
                     }
@@ -1261,21 +1286,23 @@
         function loadData() {
             const saved = localStorage.getItem('lifePlannerData');
             if (saved) {
-                data = JSON.parse(saved);
+                const loadedData = JSON.parse(saved);
+                // Merge loaded data with default structure
+                data.dailyTasks = loadedData.dailyTasks || [];
+                data.appointments = loadedData.appointments || [];
+                data.goals = loadedData.goals || [];
+                data.shoppingList = loadedData.shoppingList || [];
+                data.notes = loadedData.notes || [];
+                data.reminders = loadedData.reminders || [];
+                data.workouts = loadedData.workouts || [];
+                data.recipes = loadedData.recipes || [];
+                data.mealPlans = loadedData.mealPlans || {};
+                data.likes = loadedData.likes || [];
+                data.dislikes = loadedData.dislikes || [];
+                data.progress = loadedData.progress || {};
             }
-            // ALWAYS initialize new fields if they don't exist
-            if (!data.appointments) data.appointments = [];
-            if (!data.goals) data.goals = [];
-            if (!data.likes) data.likes = [];
-            if (!data.dislikes) data.dislikes = [];
-            if (!data.dailyTasks) data.dailyTasks = [];
-            if (!data.shoppingList) data.shoppingList = [];
-            if (!data.notes) data.notes = [];
-            if (!data.reminders) data.reminders = [];
-            if (!data.workouts) data.workouts = [];
-            if (!data.recipes) data.recipes = [];
-            if (!data.mealPlans) data.mealPlans = {};
-            if (!data.progress) data.progress = {};
+            console.log('Data loaded:', data);
+            console.log('appointments is array?', Array.isArray(data.appointments));
             checkAndResetDailyTasks();
         }
         
@@ -1485,6 +1512,10 @@
         // ==================== APPOINTMENTS ====================
         function addAppointment() {
             console.log('addAppointment called');
+            console.log('data object:', data);
+            console.log('data.appointments:', data.appointments);
+            console.log('is array?', Array.isArray(data.appointments));
+            
             const title = document.getElementById('appointmentTitle').value.trim();
             const date = document.getElementById('appointmentDate').value;
             const time = document.getElementById('appointmentTime').value;
@@ -1497,7 +1528,14 @@
                 return;
             }
             
+            if (!data.appointments) {
+                console.error('appointments is undefined! Initializing...');
+                data.appointments = [];
+            }
+            
             data.appointments.push({ id: Date.now(), title, date, time: time || '', notes });
+            console.log('After push:', data.appointments);
+            
             document.getElementById('appointmentTitle').value = '';
             document.getElementById('appointmentDate').value = '';
             document.getElementById('appointmentTime').value = '';
