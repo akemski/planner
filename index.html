@@ -564,7 +564,7 @@
         }
         
         .calendar-day.has-appointment::after {
-            content: '☆';
+            content: '★';
             position: absolute;
             top: 2px;
             right: 2px;
@@ -920,7 +920,7 @@
                                     <span>nichts</span>
                                 </div>
                                 <div class="legend-item">
-                                    <span>☆ = termin</span>
+                                    <span>★ = termin</span>
                                 </div>
                             </div>
                         </div>
@@ -1143,6 +1143,7 @@
 
     <script>
         // ==================== FIREBASE CONFIG ====================
+        // !!! HIER DEINE FIREBASE CONFIG EINFÜGEN !!!
         const firebaseConfig = {
             apiKey: "AIzaSyDOS7U6Se0jYh_4PgQqWlDeBZ65FgA3Mr0",
   authDomain: "life-planner000.firebaseapp.com",
@@ -1475,10 +1476,13 @@
         
         // ==================== APPOINTMENTS ====================
         function addAppointment() {
+            console.log('addAppointment called');
             const title = document.getElementById('appointmentTitle').value.trim();
             const date = document.getElementById('appointmentDate').value;
             const time = document.getElementById('appointmentTime').value;
             const notes = document.getElementById('appointmentNotes').value.trim();
+            
+            console.log('Values:', { title, date, time, notes });
             
             if (!title || !date) {
                 alert('Bitte Titel und Datum eingeben!');
@@ -1493,6 +1497,7 @@
             saveData();
             renderAppointments();
             renderCalendar();
+            alert('Termin hinzugefügt!');
         }
         
         function deleteAppointment(id) {
@@ -1525,8 +1530,11 @@
         
         // ==================== GOALS ====================
         function addGoal() {
+            console.log('addGoal called');
             const title = document.getElementById('goalTitle').value.trim();
             const deadline = document.getElementById('goalDeadline').value;
+            console.log('Values:', { title, deadline });
+            
             if (!title || !deadline) {
                 alert('Bitte Titel und Deadline eingeben!');
                 return;
@@ -1537,6 +1545,7 @@
             document.getElementById('goalDeadline').value = '';
             saveData();
             renderGoals();
+            alert('Ziel hinzugefügt!');
         }
         
         function toggleGoal(id) {
@@ -1858,10 +1867,13 @@
         
         // ==================== LIKES & DISLIKES ====================
         function addLikeDislike() {
+            console.log('addLikeDislike called');
             const type = document.getElementById('likeDislikeType').value;
             const category = document.getElementById('likeDislikeCategory').value;
             const name = document.getElementById('likeDislikeName').value.trim();
             const notes = document.getElementById('likeDislikeNotes').value.trim();
+            
+            console.log('Values:', { type, category, name, notes });
             
             if (!name) {
                 alert('Bitte Name eingeben!');
@@ -1880,6 +1892,7 @@
             document.getElementById('likeDislikeNotes').value = '';
             saveData();
             renderLikesDislik();
+            alert('Eintrag hinzugefügt!');
         }
         
         function deleteLikeDislike(type, id) {
