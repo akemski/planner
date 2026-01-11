@@ -1,0 +1,2107 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>life planner</title>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=DotGothic16&display=swap');
+        
+        :root {
+            --bg-main: #f0f8ff;
+            --bg-secondary: #ffffff;
+            --border-main: #5a8db8;
+            --border-light: #c8e0f0;
+            --text-main: #2c3e50;
+            --text-secondary: #6b7c8d;
+            --accent-blue: #4a8ec2;
+            --accent-green: #6bc49c;
+            --accent-purple: #9b7fb8;
+            --accent-mint: #7dd4c4;
+            --accent-pink: #e89bb5;
+            --accent-yellow: #f4c960;
+            --highlight: #d4e8f8;
+            --shadow-light: rgba(90, 141, 184, 0.15);
+            --shadow-medium: rgba(90, 141, 184, 0.25);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'DotGothic16', monospace;
+            background: linear-gradient(135deg, #e8f4fc 0%, #f0f8ff 50%, #fef9f5 100%);
+            background-attachment: fixed;
+            color: var(--text-main);
+            padding: 25px;
+            line-height: 1.6;
+        }
+        
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: 
+                radial-gradient(circle at 20% 30%, rgba(74, 142, 194, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, rgba(107, 196, 156, 0.08) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            border: 4px solid var(--border-main);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            text-align: center;
+            box-shadow: 0 8px 25px var(--shadow-medium);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .header::before {
+            content: '✦';
+            position: absolute;
+            top: -20px;
+            right: 30px;
+            font-size: 80px;
+            color: rgba(255, 255, 255, 0.1);
+            transform: rotate(15deg);
+        }
+        
+        .header::after {
+            content: '✦';
+            position: absolute;
+            bottom: -20px;
+            left: 30px;
+            font-size: 60px;
+            color: rgba(255, 255, 255, 0.1);
+            transform: rotate(-15deg);
+        }
+        
+        .header h1 {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 1.8rem;
+            color: white;
+            margin-bottom: 12px;
+            text-transform: lowercase;
+            text-shadow: 3px 3px 0 rgba(0, 0, 0, 0.2);
+            position: relative;
+            z-index: 1;
+        }
+        
+        .header .subtitle {
+            font-size: 1rem;
+            color: rgba(255, 255, 255, 0.95);
+            position: relative;
+            z-index: 1;
+        }
+        
+        #firebaseStatus {
+            margin-top: 18px;
+            font-size: 0.9rem;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .firebase-connect-btn {
+            background: white;
+            color: var(--accent-blue);
+            padding: 12px 25px;
+            border: 3px solid white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: 'DotGothic16', monospace;
+            font-size: 0.95rem;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        
+        .firebase-connect-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+        }
+        
+        .sync-indicator {
+            display: inline-block;
+            padding: 10px 20px;
+            background: white;
+            border: 3px solid white;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        
+        .sync-indicator button {
+            margin-left: 12px;
+            padding: 6px 12px;
+            background: var(--accent-pink);
+            color: white;
+            border: 2px solid var(--accent-pink);
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: 'DotGothic16', monospace;
+            font-size: 0.85rem;
+            transition: all 0.3s ease;
+        }
+        
+        .sync-indicator button:hover {
+            background: #d97a9a;
+            transform: scale(1.05);
+        }
+        
+        .main-layout {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 25px;
+        }
+        
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .nav-box {
+            background: var(--bg-secondary);
+            border: 4px solid var(--accent-blue);
+            border-radius: 15px;
+            padding: 15px;
+            box-shadow: 0 6px 20px var(--shadow-light);
+        }
+        
+        .nav-box h3 {
+            font-size: 1rem;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 3px solid var(--accent-blue);
+            color: var(--accent-blue);
+        }
+        
+        .nav-item {
+            padding: 10px 12px;
+            margin-bottom: 6px;
+            background: var(--bg-main);
+            border: 3px solid var(--border-light);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.9rem;
+            position: relative;
+        }
+        
+        .nav-item::before {
+            content: '▸';
+            position: absolute;
+            left: -15px;
+            opacity: 0;
+            transition: all 0.3s ease;
+            color: var(--accent-blue);
+        }
+        
+        .nav-item:hover {
+            background: var(--highlight);
+            border-color: var(--accent-blue);
+            transform: translateX(5px);
+        }
+        
+        .nav-item:hover::before {
+            opacity: 1;
+            left: -10px;
+        }
+        
+        .nav-item.active {
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            border-color: var(--accent-blue);
+            color: white;
+            font-weight: bold;
+        }
+        
+        .placeholder-box {
+            background: var(--bg-secondary);
+            border: 4px solid var(--accent-pink);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 6px 20px var(--shadow-light);
+            min-height: 150px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+        
+        .placeholder-box h3 {
+            font-size: 1rem;
+            margin-bottom: 15px;
+            color: var(--accent-pink);
+        }
+        
+        .placeholder-content {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            font-style: italic;
+        }
+        
+        .stat-box {
+            background: white;
+            border: 4px solid transparent;
+            border-radius: 15px;
+            padding: 15px 18px;
+            box-shadow: 0 4px 15px var(--shadow-light);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .stats-wrapper .stat-box:nth-child(1) {
+            border-color: var(--accent-green);
+        }
+        
+        .stats-wrapper .stat-box:nth-child(2) {
+            border-color: var(--accent-purple);
+        }
+        
+        .stats-wrapper .stat-box:nth-child(3) {
+            border-color: var(--accent-mint);
+        }
+        
+        .stats-wrapper .stat-box:nth-child(4) {
+            border-color: var(--accent-yellow);
+        }
+        
+        .stat-box::after {
+            content: '✦';
+            position: absolute;
+            top: 12px;
+            right: 15px;
+            font-size: 25px;
+            opacity: 0.3;
+        }
+        
+        .stats-wrapper .stat-box:nth-child(1)::after {
+            content: '🔥';
+            font-size: 22px;
+        }
+        
+        .stats-wrapper .stat-box:nth-child(2)::after,
+        .stats-wrapper .stat-box:nth-child(3)::after,
+        .stats-wrapper .stat-box:nth-child(4)::after {
+            content: '✦';
+        }
+        
+        .stat-box h3 {
+            font-size: 0.85rem;
+            margin-bottom: 8px;
+            color: var(--text-secondary);
+            text-transform: lowercase;
+            font-weight: normal;
+        }
+        
+        .stat-value {
+            font-size: 2rem;
+            font-family: 'Press Start 2P', monospace;
+            color: var(--text-main);
+            display: block;
+            margin: 5px 0;
+            line-height: 1;
+        }
+        
+        .stats-wrapper .stat-box:nth-child(1) .stat-value { color: var(--accent-green); }
+        .stats-wrapper .stat-box:nth-child(2) .stat-value { color: var(--accent-purple); }
+        .stats-wrapper .stat-box:nth-child(3) .stat-value { color: var(--accent-mint); }
+        .stats-wrapper .stat-box:nth-child(4) .stat-value { color: var(--accent-yellow); }
+        
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            display: block;
+            margin-top: 5px;
+        }
+        
+        .content-area {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+        
+        .top-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 25px;
+        }
+        
+        .bottom-row {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+        
+        .stats-wrapper {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+        }
+        
+        .box {
+            background: var(--bg-secondary);
+            border: 4px solid var(--border-main);
+            border-radius: 15px;
+            padding: 18px;
+            box-shadow: 0 6px 20px var(--shadow-light);
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        
+        .box:hover {
+            box-shadow: 0 8px 30px var(--shadow-medium);
+            transform: translateY(-2px);
+        }
+        
+        .box:nth-child(1) {
+            border-color: var(--accent-blue);
+        }
+        
+        .box:nth-child(2) {
+            border-color: var(--accent-green);
+        }
+        
+        .box-header {
+            font-size: 1rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid var(--border-light);
+            color: var(--text-main);
+            text-transform: lowercase;
+        }
+        
+        .box:nth-child(1) .box-header {
+            color: var(--accent-blue);
+            border-bottom-color: var(--accent-blue);
+        }
+        
+        .box:nth-child(2) .box-header {
+            color: var(--accent-green);
+            border-bottom-color: var(--accent-green);
+        }
+        
+        .box-content {
+            min-height: 120px;
+            max-height: 220px;
+            overflow-y: auto;
+            padding-right: 8px;
+        }
+        
+        .box-content::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .box-content::-webkit-scrollbar-track {
+            background: var(--bg-main);
+            border-radius: 4px;
+        }
+        
+        .box-content::-webkit-scrollbar-thumb {
+            background: var(--border-light);
+            border-radius: 4px;
+        }
+        
+        .box-content::-webkit-scrollbar-thumb:hover {
+            background: var(--border-main);
+        }
+        
+        .task-item,
+        .reminder-item,
+        .list-item,
+        .appointment-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            margin-bottom: 8px;
+            background: var(--bg-main);
+            border: 3px solid var(--border-light);
+            border-radius: 8px;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .task-item::before {
+            content: '✓';
+            position: absolute;
+            left: -8px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 18px;
+            color: var(--accent-green);
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+        
+        .task-item:hover,
+        .reminder-item:hover,
+        .list-item:hover,
+        .appointment-item:hover {
+            border-color: var(--accent-blue);
+            background: white;
+            transform: translateX(5px);
+            box-shadow: 0 4px 15px var(--shadow-light);
+        }
+        
+        .task-item:hover::before {
+            opacity: 1;
+            left: -3px;
+        }
+        
+        .task-item.completed {
+            background: #e8f8f0;
+            border-color: var(--accent-green);
+            opacity: 0.7;
+        }
+        
+        .task-item.completed .task-text {
+            text-decoration: line-through;
+            color: var(--text-secondary);
+        }
+        
+        .checkbox {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            accent-color: var(--accent-green);
+        }
+        
+        .task-text,
+        .reminder-text,
+        .item-text {
+            flex: 1;
+            word-break: break-word;
+            line-height: 1.5;
+        }
+        
+        .delete-btn {
+            padding: 6px 14px;
+            background: var(--accent-pink);
+            color: white;
+            border: 2px solid var(--accent-pink);
+            border-radius: 6px;
+            cursor: pointer;
+            font-family: 'DotGothic16', monospace;
+            font-size: 0.8rem;
+            transition: all 0.3s ease;
+        }
+        
+        .delete-btn:hover {
+            background: #d97a9a;
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px rgba(232, 155, 181, 0.4);
+        }
+        
+        .calendar-section {
+            background: #ffffff !important;
+            border: 4px solid var(--accent-purple) !important;
+            border-radius: 15px;
+            padding: 15px;
+            box-shadow: 0 6px 20px var(--shadow-light);
+        }
+        
+        .month-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 3px solid var(--border-light);
+        }
+        
+        .month-nav button {
+            padding: 8px 16px;
+            background: linear-gradient(135deg, var(--accent-purple), var(--accent-pink));
+            color: white;
+            border: 3px solid var(--accent-purple);
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: 'DotGothic16', monospace;
+            font-size: 0.85rem;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        
+        .month-nav button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(155, 127, 184, 0.4);
+        }
+        
+        .month-nav h3 {
+            font-family: 'Press Start 2P', monospace;
+            font-size: 0.9rem;
+            color: var(--accent-purple);
+        }
+        
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+        }
+        
+        .calendar-day {
+            min-height: 35px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid var(--border-light);
+            border-radius: 6px;
+            background: var(--bg-secondary);
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+            position: relative;
+            padding: 8px 2px;
+        }
+        
+        .calendar-day.has-appointment::after {
+            content: '📌';
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            font-size: 10px;
+        }
+        
+        .calendar-day:hover {
+            border-color: var(--accent-purple);
+            background: var(--highlight);
+            transform: scale(1.05);
+            box-shadow: 0 4px 12px var(--shadow-light);
+            z-index: 10;
+        }
+        
+        .calendar-day.header {
+            background: linear-gradient(135deg, var(--accent-purple), var(--accent-pink));
+            color: white;
+            font-weight: bold;
+            cursor: default;
+            border-color: var(--accent-purple);
+        }
+        
+        .calendar-day.header:hover {
+            background: linear-gradient(135deg, var(--accent-purple), var(--accent-pink));
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .calendar-day.empty {
+            background: transparent;
+            border: none;
+            cursor: default;
+        }
+        
+        .calendar-day.empty:hover {
+            background: transparent;
+            border: none;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .calendar-day.complete {
+            background: linear-gradient(135deg, var(--accent-green), var(--accent-mint));
+            color: white;
+            border-color: var(--accent-green);
+        }
+        
+        .calendar-day.partial {
+            background: linear-gradient(135deg, var(--accent-yellow), #ffd98e);
+            color: var(--text-main);
+            border-color: var(--accent-yellow);
+        }
+        
+        .calendar-day.none {
+            background: #f5f5f5;
+            color: var(--text-secondary);
+            border-color: #e0e0e0;
+        }
+        
+        .calendar-day.today {
+            border: 4px solid var(--accent-blue);
+            font-weight: 900;
+            box-shadow: 0 0 20px rgba(74, 142, 194, 0.4);
+        }
+        
+        .legend {
+            display: flex;
+            gap: 12px;
+            margin-top: 12px;
+            padding: 10px;
+            background: #f8f8f8;
+            border: 3px solid var(--border-light);
+            border-radius: 8px;
+            flex-wrap: wrap;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.75rem;
+        }
+        
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--border-main);
+            border-radius: 4px;
+        }
+        
+        input[type="text"],
+        input[type="number"],
+        input[type="date"],
+        input[type="time"],
+        input[type="week"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 12px 15px;
+            border: 3px solid var(--border-light);
+            border-radius: 10px;
+            background: var(--bg-main);
+            font-family: 'DotGothic16', monospace;
+            font-size: 0.95rem;
+            margin-bottom: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        input:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+            background: white;
+            box-shadow: 0 0 15px rgba(74, 142, 194, 0.2);
+        }
+        
+        textarea {
+            resize: vertical;
+            min-height: 120px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 0.95rem;
+            color: var(--text-main);
+            font-weight: bold;
+        }
+        
+        .btn {
+            padding: 12px 25px;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            color: white;
+            border: 3px solid var(--accent-blue);
+            border-radius: 10px;
+            cursor: pointer;
+            font-family: 'DotGothic16', monospace;
+            font-size: 0.95rem;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-top: 12px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(74, 142, 194, 0.4);
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+        }
+        
+        .empty-state::before {
+            content: '( ´ ▽ ` )';
+            display: block;
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+            opacity: 0.5;
+        }
+        
+        .section-view {
+            display: none;
+        }
+        
+        .section-view.active {
+            display: block;
+        }
+        
+        .goal-item {
+            background: var(--bg-main);
+            border: 3px solid var(--border-light);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .goal-item:hover {
+            border-color: var(--accent-yellow);
+            box-shadow: 0 4px 15px var(--shadow-light);
+        }
+        
+        .goal-item.completed {
+            background: #f0f9f4;
+            border-color: var(--accent-green);
+        }
+        
+        .goal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .goal-title {
+            font-weight: bold;
+            font-size: 1.05rem;
+        }
+        
+        .goal-status {
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            border: 2px solid;
+        }
+        
+        .goal-status.in-progress {
+            background: var(--accent-yellow);
+            border-color: #daa840;
+            color: white;
+        }
+        
+        .goal-status.completed {
+            background: var(--accent-green);
+            border-color: #5aa883;
+            color: white;
+        }
+        
+        .like-dislike-item {
+            background: var(--bg-main);
+            border: 3px solid var(--border-light);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .like-dislike-item.like {
+            border-left: 6px solid var(--accent-green);
+        }
+        
+        .like-dislike-item.dislike {
+            border-left: 6px solid var(--accent-pink);
+        }
+        
+        .like-dislike-item:hover {
+            box-shadow: 0 4px 15px var(--shadow-light);
+            transform: translateY(-2px);
+        }
+        
+        .category-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            background: var(--accent-purple);
+            color: white;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            margin-right: 8px;
+        }
+        
+        @media (max-width: 1024px) {
+            .main-layout {
+                grid-template-columns: 1fr;
+            }
+            
+            .top-row,
+            .stats-wrapper {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 15px;
+            }
+            
+            .header h1 {
+                font-size: 1.2rem;
+            }
+            
+            .calendar-day {
+                font-size: 0.7rem;
+            }
+            
+            .legend {
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>✦ life planner ✦</h1>
+            <div class="subtitle" id="currentDate"></div>
+            <div id="firebaseStatus"></div>
+        </div>
+        
+        <div class="main-layout">
+            <div class="sidebar">
+                <div class="nav-box">
+                    <h3>navigation</h3>
+                    <div class="nav-item active" onclick="showSection('home')">home</div>
+                    <div class="nav-item" onclick="showSection('tasks')">tasks</div>
+                    <div class="nav-item" onclick="showSection('appointments')">termine</div>
+                    <div class="nav-item" onclick="showSection('goals')">ziele</div>
+                    <div class="nav-item" onclick="showSection('shopping')">einkaufen</div>
+                    <div class="nav-item" onclick="showSection('notes')">notizen</div>
+                    <div class="nav-item" onclick="showSection('reminders')">reminder</div>
+                    <div class="nav-item" onclick="showSection('workouts')">workouts</div>
+                    <div class="nav-item" onclick="showSection('meals')">essen</div>
+                    <div class="nav-item" onclick="showSection('recipes')">rezepte</div>
+                    <div class="nav-item" onclick="showSection('likes')">likes & dislikes</div>
+                </div>
+                
+                <div class="placeholder-box">
+                    <h3>✨ quote of the day ✨</h3>
+                    <div class="placeholder-content">"der weg ist das ziel"</div>
+                </div>
+            </div>
+            
+            <div class="content-area">
+                <!-- HOME VIEW -->
+                <div id="home-view" class="section-view active">
+                    <div class="top-row">
+                        <div class="box">
+                            <div class="box-header">todays tasks</div>
+                            <div class="box-content" id="todaysTasks"></div>
+                        </div>
+                        
+                        <div class="box">
+                            <div class="box-header">todays reminder</div>
+                            <div class="box-content" id="todaysReminders"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="bottom-row">
+                        <div class="calendar-section">
+                            <div class="month-nav">
+                                <button onclick="changeMonth(-1)">← zurück</button>
+                                <h3 id="currentMonth"></h3>
+                                <button onclick="changeMonth(1)">weiter →</button>
+                            </div>
+                            
+                            <div class="calendar-grid" id="calendar"></div>
+                            
+                            <div class="legend">
+                                <div class="legend-item">
+                                    <div class="legend-color" style="background: linear-gradient(135deg, var(--accent-green), var(--accent-mint));"></div>
+                                    <span>alle erledigt</span>
+                                </div>
+                                <div class="legend-item">
+                                    <div class="legend-color" style="background: linear-gradient(135deg, var(--accent-yellow), #ffd98e);"></div>
+                                    <span>teilweise</span>
+                                </div>
+                                <div class="legend-item">
+                                    <div class="legend-color" style="background: #f5f5f5;"></div>
+                                    <span>nichts</span>
+                                </div>
+                                <div class="legend-item">
+                                    <span>📌 = termin</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="stats-wrapper">
+                            <div class="stat-box">
+                                <span class="stat-value" id="streakCount">0</span>
+                                <span class="stat-label">🔥 tage streak</span>
+                            </div>
+                            
+                            <div class="stat-box">
+                                <span class="stat-value" id="weekPercent">0%</span>
+                                <span class="stat-label">diese woche</span>
+                            </div>
+                            
+                            <div class="stat-box">
+                                <span class="stat-value" id="monthPercent">0%</span>
+                                <span class="stat-label">dieser monat</span>
+                            </div>
+                            
+                            <div class="stat-box">
+                                <span class="stat-value" id="totalTasks">0</span>
+                                <span class="stat-label">gesamt erledigt</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- TASKS VIEW -->
+                <div id="tasks-view" class="section-view">
+                    <div class="box">
+                        <div class="box-header">neue task hinzufügen</div>
+                        <div style="padding: 10px;">
+                            <input type="text" id="newTask" placeholder="task name">
+                            
+                            <label>wie oft?</label>
+                            <select id="taskFrequency" onchange="updateFrequencyOptions()">
+                                <option value="daily">täglich</option>
+                                <option value="weekdays">bestimmte wochentage</option>
+                                <option value="interval">alle X tage</option>
+                                <option value="weekly">einmal pro woche</option>
+                            </select>
+                            
+                            <div id="frequencyOptions" style="margin: 15px 0;"></div>
+                            
+                            <button class="btn" onclick="addDailyTask()">task hinzufügen</button>
+                        </div>
+                    </div>
+                    
+                    <div class="box" style="margin-top: 25px;">
+                        <div class="box-header">alle tasks</div>
+                        <div class="box-content" id="allTasksList"></div>
+                    </div>
+                </div>
+                
+                <!-- APPOINTMENTS VIEW -->
+                <div id="appointments-view" class="section-view">
+                    <div class="box">
+                        <div class="box-header">neuer termin</div>
+                        <div style="padding: 10px;">
+                            <input type="text" id="appointmentTitle" placeholder="termin titel">
+                            <input type="date" id="appointmentDate">
+                            <input type="time" id="appointmentTime">
+                            <textarea id="appointmentNotes" placeholder="notizen (optional)"></textarea>
+                            <button class="btn" onclick="addAppointment()">termin hinzufügen</button>
+                        </div>
+                    </div>
+                    
+                    <div class="box" style="margin-top: 25px;">
+                        <div class="box-header">alle termine</div>
+                        <div class="box-content" id="appointmentsList"></div>
+                    </div>
+                </div>
+                
+                <!-- GOALS VIEW -->
+                <div id="goals-view" class="section-view">
+                    <div class="box">
+                        <div class="box-header">neues ziel</div>
+                        <div style="padding: 10px;">
+                            <input type="text" id="goalTitle" placeholder="was ist das ziel?">
+                            <input type="date" id="goalDeadline" placeholder="bis wann?">
+                            <button class="btn" onclick="addGoal()">ziel hinzufügen</button>
+                        </div>
+                    </div>
+                    
+                    <div class="box" style="margin-top: 25px;">
+                        <div class="box-header">meine ziele</div>
+                        <div class="box-content" id="goalsList"></div>
+                    </div>
+                </div>
+                
+                <!-- SHOPPING VIEW -->
+                <div id="shopping-view" class="section-view">
+                    <div class="box">
+                        <div class="box-header">einkaufsliste</div>
+                        <div style="padding: 10px;">
+                            <div style="display: flex; gap: 10px;">
+                                <input type="text" id="newShoppingItem" placeholder="artikel hinzufügen..." style="flex: 1;">
+                                <button class="btn" style="width: auto; margin-top: 0;">add</button>
+                            </div>
+                            <div id="shoppingList" style="margin-top: 20px;"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- NOTES VIEW -->
+                <div id="notes-view" class="section-view">
+                    <div class="box">
+                        <div class="box-header">neue notiz</div>
+                        <div style="padding: 10px;">
+                            <textarea id="newNote" placeholder="schreib eine notiz..."></textarea>
+                            <button class="btn" onclick="addNote()">notiz speichern</button>
+                        </div>
+                    </div>
+                    
+                    <div id="notesList" style="margin-top: 20px;"></div>
+                </div>
+                
+                <!-- REMINDERS VIEW -->
+                <div id="reminders-view" class="section-view">
+                    <div class="box">
+                        <div class="box-header">neuer reminder</div>
+                        <div style="padding: 10px;">
+                            <input type="text" id="reminderTitle" placeholder="woran möchtest du erinnert werden?">
+                            <div style="display: flex; gap: 10px;">
+                                <input type="date" id="reminderDate" style="flex: 1;">
+                                <input type="time" id="reminderTime" style="flex: 1;">
+                            </div>
+                            <button class="btn" onclick="addReminder()">reminder erstellen</button>
+                        </div>
+                    </div>
+                    
+                    <div id="remindersList" style="margin-top: 20px;"></div>
+                </div>
+                
+                <!-- WORKOUTS VIEW -->
+                <div id="workouts-view" class="section-view">
+                    <div class="box">
+                        <div class="box-header">neues workout</div>
+                        <div style="padding: 10px;">
+                            <input type="text" id="workoutName" placeholder="workout name">
+                            <textarea id="workoutDescription" placeholder="beschreibung / übungen..."></textarea>
+                            <div style="display: flex; gap: 10px;">
+                                <select id="workoutDifficulty" style="flex: 1;">
+                                    <option value="">schwierigkeit</option>
+                                    <option value="Leicht">leicht</option>
+                                    <option value="Mittel">mittel</option>
+                                    <option value="Schwer">schwer</option>
+                                </select>
+                                <input type="number" id="workoutDuration" placeholder="dauer (min)" style="flex: 1;">
+                            </div>
+                            <button class="btn" onclick="addWorkout()">workout hinzufügen</button>
+                        </div>
+                    </div>
+                    
+                    <div id="workoutsList" style="margin-top: 20px;"></div>
+                </div>
+                
+                <!-- MEALS VIEW -->
+                <div id="meals-view" class="section-view">
+                    <div class="box">
+                        <div class="box-header">essensplan</div>
+                        <div style="padding: 10px;">
+                            <label>woche auswählen:</label>
+                            <input type="week" id="mealWeek" onchange="loadMealPlan()">
+                            <button class="btn" onclick="saveMealPlan()">plan speichern</button>
+                        </div>
+                    </div>
+                    
+                    <div id="mealPlanGrid" style="margin-top: 20px;"></div>
+                </div>
+                
+                <!-- RECIPES VIEW -->
+                <div id="recipes-view" class="section-view">
+                    <div class="box">
+                        <div class="box-header">neues rezept</div>
+                        <div style="padding: 10px;">
+                            <input type="text" id="recipeName" placeholder="rezeptname">
+                            <textarea id="recipeIngredients" placeholder="zutaten..."></textarea>
+                            <textarea id="recipeInstructions" placeholder="zubereitung..."></textarea>
+                            <div style="display: flex; gap: 10px;">
+                                <input type="number" id="recipeDuration" placeholder="dauer (min)" style="flex: 1;">
+                                <input type="number" id="recipeServings" placeholder="portionen" style="flex: 1;">
+                            </div>
+                            <button class="btn" onclick="addRecipe()">rezept hinzufügen</button>
+                        </div>
+                    </div>
+                    
+                    <div id="recipesList" style="margin-top: 20px;"></div>
+                </div>
+                
+                <!-- LIKES & DISLIKES VIEW -->
+                <div id="likes-view" class="section-view">
+                    <div class="box">
+                        <div class="box-header">neuer eintrag</div>
+                        <div style="padding: 10px;">
+                            <select id="likeDislikeType">
+                                <option value="like">👍 Like</option>
+                                <option value="dislike">👎 Dislike</option>
+                            </select>
+                            <select id="likeDislikeCategory">
+                                <option value="serie">Serie / Film</option>
+                                <option value="restaurant">Restaurant</option>
+                                <option value="essen">Essen / Produkt</option>
+                                <option value="marke">Marke</option>
+                                <option value="aktivitat">Aktivität</option>
+                                <option value="sonstiges">Sonstiges</option>
+                            </select>
+                            <input type="text" id="likeDislikeName" placeholder="name">
+                            <textarea id="likeDislikeNotes" placeholder="notizen / warum?"></textarea>
+                            <button class="btn" onclick="addLikeDislike()">eintrag hinzufügen</button>
+                        </div>
+                    </div>
+                    
+                    <div id="likesDislikesList" style="margin-top: 20px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==================== FIREBASE CONFIG ====================
+        // !!! HIER DEINE FIREBASE CONFIG EINFÜGEN !!!
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+        
+        let firebaseApp, auth, db, currentUser = null, unsubscribeSnapshot = null;
+        
+        try {
+            firebaseApp = firebase.initializeApp(firebaseConfig);
+            auth = firebase.auth();
+            db = firebase.firestore();
+        } catch (error) {
+            console.log('Firebase not configured:', error);
+        }
+        
+        function updateFirebaseStatus(status) {
+            const statusDiv = document.getElementById('firebaseStatus');
+            if (status === 'disconnected') {
+                statusDiv.innerHTML = '<button class="firebase-connect-btn" onclick="signInWithGoogle()">mit google anmelden</button>';
+            } else if (status === 'connected') {
+                statusDiv.innerHTML = '<div class="sync-indicator">✓ synchronisiert<button onclick="signOut()">abmelden</button></div>';
+            } else if (status === 'syncing') {
+                statusDiv.innerHTML = '<div class="sync-indicator">⟳ syncing...</div>';
+            }
+        }
+        
+        async function signInWithGoogle() {
+            if (!auth) { alert('Firebase config fehlt!'); return; }
+            try {
+                await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());
+            } catch (error) {
+                updateFirebaseStatus('disconnected');
+            }
+        }
+        
+        async function signOut() {
+            if (unsubscribeSnapshot) unsubscribeSnapshot();
+            await auth.signOut();
+            updateFirebaseStatus('disconnected');
+        }
+        
+        async function saveToFirebase() {
+            if (!currentUser || !db) return;
+            try {
+                await db.collection('users').doc(currentUser.uid).set({ data, lastUpdated: firebase.firestore.FieldValue.serverTimestamp() }, { merge: true });
+            } catch (error) {
+                console.error('Save error:', error);
+            }
+        }
+        
+        async function loadFromFirebase() {
+            if (!currentUser || !db) return;
+            try {
+                updateFirebaseStatus('syncing');
+                const doc = await db.collection('users').doc(currentUser.uid).get();
+                if (doc.exists) {
+                    const cloudData = doc.data().data;
+                    if (cloudData) {
+                        data = cloudData;
+                        saveDataLocally();
+                        refreshAllViews();
+                    }
+                }
+                updateFirebaseStatus('connected');
+                if (unsubscribeSnapshot) unsubscribeSnapshot();
+                unsubscribeSnapshot = db.collection('users').doc(currentUser.uid).onSnapshot((doc) => {
+                    if (doc.exists && doc.data().data) {
+                        data = doc.data().data;
+                        saveDataLocally();
+                        refreshAllViews();
+                    }
+                });
+            } catch (error) {
+                console.error('Load error:', error);
+            }
+        }
+        
+        if (auth) {
+            auth.onAuthStateChanged((user) => {
+                if (user) {
+                    currentUser = user;
+                    loadFromFirebase();
+                } else {
+                    currentUser = null;
+                    if (unsubscribeSnapshot) unsubscribeSnapshot();
+                    updateFirebaseStatus('disconnected');
+                }
+            });
+        } else {
+            updateFirebaseStatus('disconnected');
+        }
+        
+        // ==================== DATA STRUCTURE ====================
+        let data = {
+            dailyTasks: [],
+            appointments: [],
+            goals: [],
+            shoppingList: [],
+            notes: [],
+            reminders: [],
+            workouts: [],
+            recipes: [],
+            mealPlans: {},
+            likes: [],
+            dislikes: [],
+            progress: {}
+        };
+        
+        let currentViewMonth = new Date();
+        
+        function loadData() {
+            const saved = localStorage.getItem('lifePlannerData');
+            if (saved) {
+                data = JSON.parse(saved);
+                // Initialize new fields if they don't exist
+                if (!data.appointments) data.appointments = [];
+                if (!data.goals) data.goals = [];
+                if (!data.likes) data.likes = [];
+                if (!data.dislikes) data.dislikes = [];
+            }
+            checkAndResetDailyTasks();
+        }
+        
+        function saveDataLocally() {
+            localStorage.setItem('lifePlannerData', JSON.stringify(data));
+        }
+        
+        function saveData() {
+            saveDataLocally();
+            if (currentUser && db) {
+                clearTimeout(window.firebaseSaveTimeout);
+                window.firebaseSaveTimeout = setTimeout(() => saveToFirebase(), 1000);
+            }
+        }
+        
+        function checkAndResetDailyTasks() {
+            const today = new Date().toDateString();
+            const lastCheck = localStorage.getItem('lastTaskReset');
+            if (lastCheck && lastCheck !== today) {
+                const yesterday = new Date(lastCheck);
+                const yesterdayKey = yesterday.toDateString();
+                const yesterdayTasks = data.dailyTasks.filter(task => isTaskDueOnDate(task, yesterday));
+                const completedCount = yesterdayTasks.filter(t => t.completions[yesterdayKey]).length;
+                const totalCount = yesterdayTasks.length;
+                if (!data.progress) data.progress = {};
+                if (totalCount > 0) {
+                    data.progress[yesterdayKey] = { completed: completedCount, total: totalCount };
+                }
+                saveData();
+            }
+            localStorage.setItem('lastTaskReset', today);
+        }
+        
+        function updateCurrentDate() {
+            document.getElementById('currentDate').textContent = new Date().toLocaleDateString('de-DE', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        }
+        
+        // ==================== NAVIGATION ====================
+        function showSection(section) {
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            event.target.classList.add('active');
+            document.querySelectorAll('.section-view').forEach(view => view.classList.remove('active'));
+            
+            const viewId = section + '-view';
+            const view = document.getElementById(viewId);
+            if (view) {
+                view.classList.add('active');
+                if (section === 'home') refreshAllViews();
+                else if (section === 'tasks') { renderAllTasks(); updateFrequencyOptions(); }
+                else if (section === 'appointments') renderAppointments();
+                else if (section === 'goals') renderGoals();
+                else if (section === 'shopping') renderShoppingList();
+                else if (section === 'notes') renderNotes();
+                else if (section === 'reminders') renderReminders();
+                else if (section === 'workouts') renderWorkouts();
+                else if (section === 'meals') initMealPlan();
+                else if (section === 'recipes') renderRecipes();
+                else if (section === 'likes') renderLikesDislik();
+            }
+        }
+        
+        // ==================== TASKS ====================
+        function updateFrequencyOptions() {
+            const frequency = document.getElementById('taskFrequency').value;
+            const container = document.getElementById('frequencyOptions');
+            if (frequency === 'daily') {
+                container.innerHTML = '<p style="color: var(--text-secondary); font-size: 0.9rem;">task erscheint jeden tag</p>';
+            } else if (frequency === 'weekdays') {
+                container.innerHTML = `
+                    <label>wochentage:</label>
+                    <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;">
+                        ${['mo', 'di', 'mi', 'do', 'fr', 'sa', 'so'].map((day, i) => `
+                            <label style="display: flex; align-items: center; gap: 6px; padding: 8px 12px; background: var(--bg-main); border: 2px solid var(--border-light); border-radius: 8px; cursor: pointer;">
+                                <input type="checkbox" value="${i === 6 ? 0 : i + 1}" class="weekday-check"> ${day}
+                            </label>
+                        `).join('')}
+                    </div>
+                `;
+            } else if (frequency === 'interval') {
+                container.innerHTML = `
+                    <label>alle wie viele tage?</label>
+                    <input type="number" id="intervalDays" min="2" max="30" value="2" placeholder="z.B. 2">
+                `;
+            } else if (frequency === 'weekly') {
+                container.innerHTML = `
+                    <label>welcher wochentag?</label>
+                    <select id="weeklyDay">
+                        <option value="1">montag</option>
+                        <option value="2">dienstag</option>
+                        <option value="3">mittwoch</option>
+                        <option value="4">donnerstag</option>
+                        <option value="5">freitag</option>
+                        <option value="6">samstag</option>
+                        <option value="0">sonntag</option>
+                    </select>
+                `;
+            }
+        }
+        
+        function addDailyTask() {
+            const text = document.getElementById('newTask').value.trim();
+            const frequency = document.getElementById('taskFrequency').value;
+            if (!text) return;
+            
+            const task = { id: Date.now(), text, frequency, completions: {} };
+            
+            if (frequency === 'weekdays') {
+                task.weekdays = Array.from(document.querySelectorAll('.weekday-check:checked')).map(cb => parseInt(cb.value));
+                if (task.weekdays.length === 0) { alert('bitte wähle mindestens einen wochentag!'); return; }
+            } else if (frequency === 'interval') {
+                task.intervalDays = parseInt(document.getElementById('intervalDays').value) || 2;
+                task.startDate = new Date().toDateString();
+            } else if (frequency === 'weekly') {
+                task.weekday = parseInt(document.getElementById('weeklyDay').value);
+            }
+            
+            data.dailyTasks.push(task);
+            document.getElementById('newTask').value = '';
+            saveData();
+            renderAllTasks();
+            renderTodaysTasks();
+        }
+        
+        function isTaskDueOnDate(task, date) {
+            const dayOfWeek = date.getDay();
+            if (task.frequency === 'daily') return true;
+            if (task.frequency === 'weekdays') return task.weekdays.includes(dayOfWeek);
+            if (task.frequency === 'weekly') return task.weekday === dayOfWeek;
+            if (task.frequency === 'interval') {
+                const start = new Date(task.startDate);
+                const diffDays = Math.floor((date - start) / (1000 * 60 * 60 * 24));
+                return diffDays % task.intervalDays === 0;
+            }
+            return false;
+        }
+        
+        function toggleTask(id) {
+            const task = data.dailyTasks.find(t => t.id === id);
+            if (task) {
+                const today = new Date().toDateString();
+                task.completions[today] = !task.completions[today];
+                saveData();
+                renderTodaysTasks();
+            }
+        }
+        
+        function deleteDailyTask(id) {
+            data.dailyTasks = data.dailyTasks.filter(t => t.id !== id);
+            saveData();
+            renderAllTasks();
+            renderTodaysTasks();
+        }
+        
+        function getTaskFrequencyText(task) {
+            if (task.frequency === 'daily') return 'täglich';
+            if (task.frequency === 'weekdays') {
+                const days = ['so', 'mo', 'di', 'mi', 'do', 'fr', 'sa'];
+                return task.weekdays.map(d => days[d]).join(', ');
+            }
+            if (task.frequency === 'weekly') {
+                const days = ['sonntag', 'montag', 'dienstag', 'mittwoch', 'donnerstag', 'freitag', 'samstag'];
+                return days[task.weekday];
+            }
+            if (task.frequency === 'interval') return `alle ${task.intervalDays} tage`;
+            return '';
+        }
+        
+        function renderTodaysTasks() {
+            const list = document.getElementById('todaysTasks');
+            const today = new Date();
+            const todayKey = today.toDateString();
+            const todaysTasks = data.dailyTasks.filter(task => isTaskDueOnDate(task, today));
+            
+            if (todaysTasks.length === 0) {
+                list.innerHTML = '<div class="empty-state">keine tasks heute</div>';
+                return;
+            }
+            
+            list.innerHTML = todaysTasks.map(task => {
+                const completed = task.completions[todayKey] || false;
+                return `
+                    <div class="task-item ${completed ? 'completed' : ''}">
+                        <input type="checkbox" class="checkbox" ${completed ? 'checked' : ''} onchange="toggleTask(${task.id})">
+                        <span class="task-text">${task.text}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+        
+        function renderAllTasks() {
+            const list = document.getElementById('allTasksList');
+            if (data.dailyTasks.length === 0) {
+                list.innerHTML = '<div class="empty-state">noch keine tasks</div>';
+                return;
+            }
+            list.innerHTML = data.dailyTasks.map(task => `
+                <div class="list-item">
+                    <div style="flex: 1;">
+                        <div style="font-weight: bold;">${task.text}</div>
+                        <div style="font-size: 0.85rem; color: var(--text-secondary);">${getTaskFrequencyText(task)}</div>
+                    </div>
+                    <button class="delete-btn" onclick="deleteDailyTask(${task.id})">löschen</button>
+                </div>
+            `).join('');
+        }
+        
+        // ==================== APPOINTMENTS ====================
+        function addAppointment() {
+            const title = document.getElementById('appointmentTitle').value.trim();
+            const date = document.getElementById('appointmentDate').value;
+            const time = document.getElementById('appointmentTime').value;
+            const notes = document.getElementById('appointmentNotes').value.trim();
+            
+            if (!title || !date) return;
+            
+            data.appointments.push({ id: Date.now(), title, date, time, notes });
+            document.getElementById('appointmentTitle').value = '';
+            document.getElementById('appointmentDate').value = '';
+            document.getElementById('appointmentTime').value = '';
+            document.getElementById('appointmentNotes').value = '';
+            saveData();
+            renderAppointments();
+            renderCalendar();
+        }
+        
+        function deleteAppointment(id) {
+            data.appointments = data.appointments.filter(a => a.id !== id);
+            saveData();
+            renderAppointments();
+            renderCalendar();
+        }
+        
+        function renderAppointments() {
+            const list = document.getElementById('appointmentsList');
+            if (data.appointments.length === 0) {
+                list.innerHTML = '<div class="empty-state">keine termine</div>';
+                return;
+            }
+            const sorted = [...data.appointments].sort((a, b) => new Date(a.date + ' ' + a.time) - new Date(b.date + ' ' + b.time));
+            list.innerHTML = sorted.map(apt => `
+                <div class="appointment-item">
+                    <div style="flex: 1;">
+                        <div style="font-weight: bold;">${apt.title}</div>
+                        <div style="font-size: 0.85rem; color: var(--text-secondary);">
+                            ${new Date(apt.date).toLocaleDateString('de-DE')} ${apt.time ? 'um ' + apt.time : ''}
+                        </div>
+                        ${apt.notes ? `<div style="font-size: 0.85rem; margin-top: 5px;">${apt.notes}</div>` : ''}
+                    </div>
+                    <button class="delete-btn" onclick="deleteAppointment(${apt.id})">löschen</button>
+                </div>
+            `).join('');
+        }
+        
+        // ==================== GOALS ====================
+        function addGoal() {
+            const title = document.getElementById('goalTitle').value.trim();
+            const deadline = document.getElementById('goalDeadline').value;
+            if (!title || !deadline) return;
+            
+            data.goals.push({ id: Date.now(), title, deadline, completed: false });
+            document.getElementById('goalTitle').value = '';
+            document.getElementById('goalDeadline').value = '';
+            saveData();
+            renderGoals();
+        }
+        
+        function toggleGoal(id) {
+            const goal = data.goals.find(g => g.id === id);
+            if (goal) {
+                goal.completed = !goal.completed;
+                saveData();
+                renderGoals();
+            }
+        }
+        
+        function deleteGoal(id) {
+            data.goals = data.goals.filter(g => g.id !== id);
+            saveData();
+            renderGoals();
+        }
+        
+        function renderGoals() {
+            const list = document.getElementById('goalsList');
+            if (data.goals.length === 0) {
+                list.innerHTML = '<div class="empty-state">keine ziele</div>';
+                return;
+            }
+            list.innerHTML = data.goals.map(goal => `
+                <div class="goal-item ${goal.completed ? 'completed' : ''}">
+                    <div class="goal-header">
+                        <div class="goal-title">${goal.title}</div>
+                        <div class="goal-status ${goal.completed ? 'completed' : 'in-progress'}">
+                            ${goal.completed ? '✓ erledigt' : 'in progress'}
+                        </div>
+                    </div>
+                    <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 10px;">
+                        Deadline: ${new Date(goal.deadline).toLocaleDateString('de-DE')}
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn" style="width: auto; margin: 0;" onclick="toggleGoal(${goal.id})">
+                            ${goal.completed ? 'reaktivieren' : 'als erledigt markieren'}
+                        </button>
+                        <button class="delete-btn" onclick="deleteGoal(${goal.id})">löschen</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // ==================== SHOPPING ====================
+        function addShoppingItem() {
+            const text = document.getElementById('newShoppingItem').value.trim();
+            if (text) {
+                data.shoppingList.push({ id: Date.now(), text });
+                document.getElementById('newShoppingItem').value = '';
+                saveData();
+                renderShoppingList();
+            }
+        }
+        
+        function deleteShoppingItem(id) {
+            data.shoppingList = data.shoppingList.filter(item => item.id !== id);
+            saveData();
+            renderShoppingList();
+        }
+        
+        function renderShoppingList() {
+            const list = document.getElementById('shoppingList');
+            if (data.shoppingList.length === 0) {
+                list.innerHTML = '<div class="empty-state">liste ist leer</div>';
+                return;
+            }
+            list.innerHTML = data.shoppingList.map(item => `
+                <div class="list-item">
+                    <span class="item-text">${item.text}</span>
+                    <button class="delete-btn" onclick="deleteShoppingItem(${item.id})">löschen</button>
+                </div>
+            `).join('');
+        }
+        
+        // ==================== NOTES ====================
+        function addNote() {
+            const text = document.getElementById('newNote').value.trim();
+            if (text) {
+                data.notes.push({ id: Date.now(), text, date: new Date().toLocaleDateString('de-DE') });
+                document.getElementById('newNote').value = '';
+                saveData();
+                renderNotes();
+            }
+        }
+        
+        function deleteNote(id) {
+            data.notes = data.notes.filter(note => note.id !== id);
+            saveData();
+            renderNotes();
+        }
+        
+        function renderNotes() {
+            const list = document.getElementById('notesList');
+            if (data.notes.length === 0) return;
+            list.innerHTML = data.notes.map(note => `
+                <div class="box">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <span style="font-size: 0.85rem; color: var(--text-secondary);">${note.date}</span>
+                        <button class="delete-btn" onclick="deleteNote(${note.id})">löschen</button>
+                    </div>
+                    <div style="white-space: pre-wrap;">${note.text}</div>
+                </div>
+            `).join('');
+        }
+        
+        // ==================== REMINDERS ====================
+        function addReminder() {
+            const title = document.getElementById('reminderTitle').value.trim();
+            const date = document.getElementById('reminderDate').value;
+            const time = document.getElementById('reminderTime').value;
+            
+            if (title && date && time) {
+                data.reminders.push({ id: Date.now(), title, date, time });
+                document.getElementById('reminderTitle').value = '';
+                document.getElementById('reminderDate').value = '';
+                document.getElementById('reminderTime').value = '';
+                saveData();
+                renderReminders();
+                renderTodaysReminders();
+            }
+        }
+        
+        function deleteReminder(id) {
+            data.reminders = data.reminders.filter(r => r.id !== id);
+            saveData();
+            renderReminders();
+            renderTodaysReminders();
+        }
+        
+        function renderReminders() {
+            const list = document.getElementById('remindersList');
+            if (data.reminders.length === 0) return;
+            const sorted = [...data.reminders].sort((a, b) => new Date(a.date + ' ' + a.time) - new Date(b.date + ' ' + b.time));
+            list.innerHTML = sorted.map(r => `
+                <div class="box">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div style="flex: 1;">
+                            <div style="font-weight: bold; margin-bottom: 5px;">${r.title}</div>
+                            <div style="font-size: 0.85rem; color: var(--text-secondary);">
+                                ${new Date(r.date).toLocaleDateString('de-DE')} um ${r.time} uhr
+                            </div>
+                        </div>
+                        <button class="delete-btn" onclick="deleteReminder(${r.id})">löschen</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function renderTodaysReminders() {
+            const list = document.getElementById('todaysReminders');
+            const today = new Date().toDateString();
+            const todaysReminders = data.reminders.filter(r => new Date(r.date).toDateString() === today);
+            
+            if (todaysReminders.length === 0) {
+                list.innerHTML = '<div class="empty-state">keine reminder heute</div>';
+                return;
+            }
+            list.innerHTML = todaysReminders.map(r => `
+                <div class="reminder-item">
+                    <span class="reminder-text">${r.title}</span>
+                    <span style="font-size: 0.8rem; color: var(--text-secondary);">${r.time}</span>
+                </div>
+            `).join('');
+        }
+        
+        // ==================== WORKOUTS ====================
+        function addWorkout() {
+            const name = document.getElementById('workoutName').value.trim();
+            const description = document.getElementById('workoutDescription').value.trim();
+            const difficulty = document.getElementById('workoutDifficulty').value;
+            const duration = document.getElementById('workoutDuration').value;
+            
+            if (name && description && difficulty && duration) {
+                data.workouts.push({ id: Date.now(), name, description, difficulty, duration: parseInt(duration) });
+                document.getElementById('workoutName').value = '';
+                document.getElementById('workoutDescription').value = '';
+                document.getElementById('workoutDifficulty').value = '';
+                document.getElementById('workoutDuration').value = '';
+                saveData();
+                renderWorkouts();
+            }
+        }
+        
+        function deleteWorkout(id) {
+            data.workouts = data.workouts.filter(w => w.id !== id);
+            saveData();
+            renderWorkouts();
+        }
+        
+        function renderWorkouts() {
+            const list = document.getElementById('workoutsList');
+            if (data.workouts.length === 0) return;
+            list.innerHTML = data.workouts.map(w => `
+                <div class="box">
+                    <h4 style="margin-bottom: 10px;">${w.name}</h4>
+                    <div style="margin-bottom: 10px;">
+                        <span class="category-badge">${w.difficulty}</span>
+                        <span class="category-badge">${w.duration} min</span>
+                    </div>
+                    <p style="white-space: pre-wrap; margin-bottom: 10px;">${w.description}</p>
+                    <button class="delete-btn" onclick="deleteWorkout(${w.id})">löschen</button>
+                </div>
+            `).join('');
+        }
+        
+        // ==================== MEALS ====================
+        function initMealPlan() {
+            const weekInput = document.getElementById('mealWeek');
+            const today = new Date();
+            const week = getWeekNumber(today);
+            weekInput.value = `${today.getFullYear()}-W${week.toString().padStart(2, '0')}`;
+            loadMealPlan();
+        }
+        
+        function getWeekNumber(date) {
+            const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+            const dayNum = d.getUTCDay() || 7;
+            d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+            const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+            return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+        }
+        
+        function loadMealPlan() {
+            const weekKey = document.getElementById('mealWeek').value;
+            const grid = document.getElementById('mealPlanGrid');
+            const days = ['montag', 'dienstag', 'mittwoch', 'donnerstag', 'freitag', 'samstag', 'sonntag'];
+            const meals = ['frühstück', 'mittagessen', 'abendessen'];
+            
+            if (!data.mealPlans[weekKey]) data.mealPlans[weekKey] = {};
+            
+            grid.innerHTML = days.map(day => `
+                <div class="box" style="margin-bottom: 15px;">
+                    <h4 style="margin-bottom: 12px; text-transform: capitalize;">${day}</h4>
+                    ${meals.map(meal => `
+                        <div style="margin-bottom: 10px;">
+                            <label style="font-size: 0.85rem; margin-bottom: 5px;">${meal}:</label>
+                            <input type="text" id="meal-${weekKey}-${day}-${meal}" 
+                                   value="${data.mealPlans[weekKey][`${day}-${meal}`] || ''}" 
+                                   placeholder="...">
+                        </div>
+                    `).join('')}
+                </div>
+            `).join('');
+        }
+        
+        function saveMealPlan() {
+            const weekKey = document.getElementById('mealWeek').value;
+            const days = ['montag', 'dienstag', 'mittwoch', 'donnerstag', 'freitag', 'samstag', 'sonntag'];
+            const meals = ['frühstück', 'mittagessen', 'abendessen'];
+            
+            if (!data.mealPlans[weekKey]) data.mealPlans[weekKey] = {};
+            
+            days.forEach(day => {
+                meals.forEach(meal => {
+                    const input = document.getElementById(`meal-${weekKey}-${day}-${meal}`);
+                    if (input) data.mealPlans[weekKey][`${day}-${meal}`] = input.value;
+                });
+            });
+            saveData();
+            alert('plan gespeichert!');
+        }
+        
+        // ==================== RECIPES ====================
+        function addRecipe() {
+            const name = document.getElementById('recipeName').value.trim();
+            const ingredients = document.getElementById('recipeIngredients').value.trim();
+            const instructions = document.getElementById('recipeInstructions').value.trim();
+            const duration = document.getElementById('recipeDuration').value;
+            const servings = document.getElementById('recipeServings').value;
+            
+            if (name && ingredients && instructions) {
+                data.recipes.push({ 
+                    id: Date.now(), 
+                    name, 
+                    ingredients, 
+                    instructions, 
+                    duration: duration ? parseInt(duration) : null, 
+                    servings: servings ? parseInt(servings) : null 
+                });
+                document.getElementById('recipeName').value = '';
+                document.getElementById('recipeIngredients').value = '';
+                document.getElementById('recipeInstructions').value = '';
+                document.getElementById('recipeDuration').value = '';
+                document.getElementById('recipeServings').value = '';
+                saveData();
+                renderRecipes();
+            }
+        }
+        
+        function deleteRecipe(id) {
+            data.recipes = data.recipes.filter(r => r.id !== id);
+            saveData();
+            renderRecipes();
+        }
+        
+        function renderRecipes() {
+            const list = document.getElementById('recipesList');
+            if (data.recipes.length === 0) return;
+            list.innerHTML = data.recipes.map(recipe => `
+                <div class="box" style="margin-bottom: 15px;">
+                    <h4 style="margin-bottom: 10px;">${recipe.name}</h4>
+                    <div style="margin-bottom: 10px;">
+                        ${recipe.duration ? `<span class="category-badge">${recipe.duration} min</span>` : ''}
+                        ${recipe.servings ? `<span class="category-badge">${recipe.servings} portionen</span>` : ''}
+                    </div>
+                    <div style="margin-bottom: 10px;">
+                        <strong>Zutaten:</strong>
+                        <p style="white-space: pre-wrap; margin-top: 5px;">${recipe.ingredients}</p>
+                    </div>
+                    <div style="margin-bottom: 10px;">
+                        <strong>Zubereitung:</strong>
+                        <p style="white-space: pre-wrap; margin-top: 5px;">${recipe.instructions}</p>
+                    </div>
+                    <button class="delete-btn" onclick="deleteRecipe(${recipe.id})">löschen</button>
+                </div>
+            `).join('');
+        }
+        
+        // ==================== LIKES & DISLIKES ====================
+        function addLikeDislike() {
+            const type = document.getElementById('likeDislikeType').value;
+            const category = document.getElementById('likeDislikeCategory').value;
+            const name = document.getElementById('likeDislikeName').value.trim();
+            const notes = document.getElementById('likeDislikeNotes').value.trim();
+            
+            if (!name) return;
+            
+            const entry = { id: Date.now(), category, name, notes };
+            
+            if (type === 'like') {
+                data.likes.push(entry);
+            } else {
+                data.dislikes.push(entry);
+            }
+            
+            document.getElementById('likeDislikeName').value = '';
+            document.getElementById('likeDislikeNotes').value = '';
+            saveData();
+            renderLikesDislik();
+        }
+        
+        function deleteLikeDislike(type, id) {
+            if (type === 'like') {
+                data.likes = data.likes.filter(l => l.id !== id);
+            } else {
+                data.dislikes = data.dislikes.filter(d => d.id !== id);
+            }
+            saveData();
+            renderLikesDislik();
+        }
+        
+        function renderLikesDislik() {
+            const list = document.getElementById('likesDislikesList');
+            const allEntries = [
+                ...data.likes.map(l => ({ ...l, type: 'like' })),
+                ...data.dislikes.map(d => ({ ...d, type: 'dislike' }))
+            ].sort((a, b) => b.id - a.id);
+            
+            if (allEntries.length === 0) {
+                list.innerHTML = '<div class="empty-state">noch keine einträge</div>';
+                return;
+            }
+            
+            list.innerHTML = allEntries.map(entry => `
+                <div class="like-dislike-item ${entry.type}">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px;">
+                        <div style="flex: 1;">
+                            <div style="font-weight: bold; font-size: 1.05rem; margin-bottom: 5px;">
+                                ${entry.type === 'like' ? '👍' : '👎'} ${entry.name}
+                            </div>
+                            <span class="category-badge">${entry.category}</span>
+                        </div>
+                        <button class="delete-btn" onclick="deleteLikeDislike('${entry.type}', ${entry.id})">löschen</button>
+                    </div>
+                    ${entry.notes ? `<div style="margin-top: 10px; font-size: 0.9rem;">${entry.notes}</div>` : ''}
+                </div>
+            `).join('');
+        }
+        
+        // ==================== CALENDAR & PROGRESS ====================
+        function changeMonth(delta) {
+            currentViewMonth.setMonth(currentViewMonth.getMonth() + delta);
+            renderCalendar();
+        }
+        
+        function renderCalendar() {
+            const calendar = document.getElementById('calendar');
+            const monthTitle = document.getElementById('currentMonth');
+            
+            const year = currentViewMonth.getFullYear();
+            const month = currentViewMonth.getMonth();
+            
+            monthTitle.textContent = currentViewMonth.toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
+            
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const daysInMonth = lastDay.getDate();
+            const startingDayOfWeek = firstDay.getDay() || 7;
+            
+            const today = new Date();
+            const isCurrentMonth = today.getMonth() === month && today.getFullYear() === year;
+            
+            let html = '<div class="calendar-day header">mo</div>';
+            html += '<div class="calendar-day header">di</div>';
+            html += '<div class="calendar-day header">mi</div>';
+            html += '<div class="calendar-day header">do</div>';
+            html += '<div class="calendar-day header">fr</div>';
+            html += '<div class="calendar-day header">sa</div>';
+            html += '<div class="calendar-day header">so</div>';
+            
+            for (let i = 1; i < startingDayOfWeek; i++) {
+                html += '<div class="calendar-day empty"></div>';
+            }
+            
+            for (let day = 1; day <= daysInMonth; day++) {
+                const date = new Date(year, month, day);
+                const dateKey = date.toDateString();
+                
+                let className = 'calendar-day';
+                let completedCount = 0, totalCount = 0;
+                
+                // Check for appointments
+                const hasAppointment = data.appointments && data.appointments.some(apt => new Date(apt.date).toDateString() === dateKey);
+                if (hasAppointment) className += ' has-appointment';
+                
+                if (isCurrentMonth && day === today.getDate()) {
+                    className += ' today';
+                    const todaysTasks = data.dailyTasks.filter(task => isTaskDueOnDate(task, date));
+                    totalCount = todaysTasks.length;
+                    completedCount = todaysTasks.filter(t => t.completions[dateKey]).length;
+                    
+                    if (totalCount > 0) {
+                        if (completedCount === totalCount) className += ' complete';
+                        else if (completedCount > 0) className += ' partial';
+                        else className += ' none';
+                    }
+                } else {
+                    const dayData = data.progress[dateKey];
+                    if (dayData) {
+                        completedCount = dayData.completed;
+                        totalCount = dayData.total;
+                        if (completedCount === totalCount && totalCount > 0) className += ' complete';
+                        else if (completedCount > 0) className += ' partial';
+                        else className += ' none';
+                    }
+                }
+                
+                const title = totalCount > 0 ? `${completedCount}/${totalCount}` : '';
+                html += `<div class="${className}" title="${title}">${day}</div>`;
+            }
+            
+            calendar.innerHTML = html;
+        }
+        
+        function updateStats() {
+            const today = new Date();
+            const todayKey = today.toDateString();
+            const todaysTasks = data.dailyTasks.filter(task => isTaskDueOnDate(task, today));
+            const todayCompleted = todaysTasks.filter(t => t.completions[todayKey]).length;
+            
+            let streak = 0;
+            if (todayCompleted > 0) streak = 1;
+            
+            let checkDate = new Date(today);
+            checkDate.setDate(checkDate.getDate() - 1);
+            while (true) {
+                const dateKey = checkDate.toDateString();
+                const dayData = data.progress[dateKey];
+                if (dayData && dayData.completed > 0) {
+                    streak++;
+                    checkDate.setDate(checkDate.getDate() - 1);
+                } else break;
+            }
+            
+            document.getElementById('streakCount').textContent = streak;
+            
+            const weekStart = new Date(today);
+            weekStart.setDate(today.getDate() - today.getDay() + 1);
+            let weekTotal = 0, weekCompleted = 0;
+            
+            for (let i = 0; i < 7; i++) {
+                const checkDate = new Date(weekStart);
+                checkDate.setDate(weekStart.getDate() + i);
+                const dateKey = checkDate.toDateString();
+                
+                if (dateKey === todayKey) {
+                    weekTotal += todaysTasks.length;
+                    weekCompleted += todayCompleted;
+                } else {
+                    const dayData = data.progress[dateKey];
+                    if (dayData) {
+                        weekTotal += dayData.total;
+                        weekCompleted += dayData.completed;
+                    }
+                }
+            }
+            
+            document.getElementById('weekPercent').textContent = weekTotal > 0 ? Math.round((weekCompleted / weekTotal) * 100) + '%' : '0%';
+            
+            const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+            let monthTotal = 0, monthCompleted = 0;
+            const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+            
+            for (let i = 0; i < daysInMonth; i++) {
+                const checkDate = new Date(monthStart);
+                checkDate.setDate(monthStart.getDate() + i);
+                const dateKey = checkDate.toDateString();
+                
+                if (dateKey === todayKey) {
+                    monthTotal += todaysTasks.length;
+                    monthCompleted += todayCompleted;
+                } else {
+                    const dayData = data.progress[dateKey];
+                    if (dayData) {
+                        monthTotal += dayData.total;
+                        monthCompleted += dayData.completed;
+                    }
+                }
+            }
+            
+            document.getElementById('monthPercent').textContent = monthTotal > 0 ? Math.round((monthCompleted / monthTotal) * 100) + '%' : '0%';
+            
+            let totalCompleted = 0;
+            Object.values(data.progress).forEach(day => totalCompleted += day.completed);
+            totalCompleted += todayCompleted;
+            
+            document.getElementById('totalTasks').textContent = totalCompleted;
+        }
+        
+        function refreshAllViews() {
+            renderTodaysTasks();
+            renderTodaysReminders();
+            updateStats();
+            renderCalendar();
+        }
+        
+        // ==================== INITIALIZATION ====================
+        loadData();
+        updateCurrentDate();
+        updateFrequencyOptions();
+        
+        // Wait for DOM to be fully loaded
+        setTimeout(() => {
+            refreshAllViews();
+            console.log('Calendar initialized');
+        }, 100);
+        
+        document.getElementById('newTask').addEventListener('keypress', e => { if (e.key === 'Enter') addDailyTask(); });
+        document.getElementById('newShoppingItem').addEventListener('keypress', e => { if (e.key === 'Enter') addShoppingItem(); });
+        
+        // Add button click handler for shopping
+        document.querySelector('#shopping-view .btn').addEventListener('click', addShoppingItem);
+    </script>
+</body>
+</html>
